@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 public class TwitterProducer {
     private Logger logger = LoggerFactory.getLogger(TwitterProducer.class);
     private Properties properties = new Properties();
-    private List<String> terms = Lists.newArrayList("kafka");
+    private List<String> terms = Lists.newArrayList("bitcoin", "usa", "politics", "sport", "soccer");
 
     public TwitterProducer () throws IOException {
         String propFileName = "config.properties";
@@ -119,7 +119,12 @@ public class TwitterProducer {
         properties.setProperty(ProducerConfig.RETRIES_CONFIG, Integer.toString(Integer.MAX_VALUE));
         properties.setProperty(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, "5");  // kafka 2.0 >= 1.1
 
-        // 2. create the producer
+        // 2b. high throughput producer at the expense of latency & cpu
+        properties.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
+        properties.setProperty(ProducerConfig.LINGER_MS_CONFIG, "20");
+        properties.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, Integer.toString(32*1024)); // 32 KB
+
+        // 3. create the producer
         KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
 
 
