@@ -1,5 +1,6 @@
 package com.voco.kafka.tutorial3;
 
+import com.google.gson.JsonParser;
 import org.apache.http.HttpHost;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -59,7 +60,6 @@ public class ElasticSearchConsumer {
     public static KafkaConsumer<String, String> createConsumer(String topic) {
         String bootstrapServers = "localhost:9092";
         String groupId = "kafka-es-app";
-        // sample consumer CLI,  kafka-console-consumer.sh --bootstrap-server 127.0.0.1:9092 --topic twitter_tweets --group kafka-es-app
 
         // 1. create consumer configs
         Properties properties = new Properties();
@@ -82,23 +82,25 @@ public class ElasticSearchConsumer {
         Logger logger = LoggerFactory.getLogger(ElasticSearchConsumer.class.getName());
 
         RestHighLevelClient client = createClient();
-//        logger.info("Got here1");
         KafkaConsumer<String, String> consumer = createConsumer("twitter_tweets");
-//        logger.info("Got here2");
         // 4. poll for new data
         while (true) {  // purely for demo purpose
             ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
             for (ConsumerRecord<String, String> record : records) {
-//                logger.info("Got here3");
+                // 2 strategies for generating ID...
+                // 1. use if you can't find a specific id
+//                String id = record.topic() + "_" + record.partition() + "_" + record.offset();
+                // 2. use if you can find a specific id
+                String id = extractIdFromTweet(record.value());
                 // where we insert data into Elasticsearch
                 IndexRequest indexRequest = new IndexRequest(
                         "twitter",
-                        "tweets"
+                        "tweets",
+                        id  // this is to make the consumer idempotent
                 ).source(record.value(), XContentType.JSON);
 
                 IndexResponse indexResponse = client.index(indexRequest, RequestOptions.DEFAULT);
-                String id = indexResponse.getId();
-                logger.info("Tweet id: " + id);
+                logger.info("Tweet id: " + indexResponse.getId());
 
                 try {
                     Thread.sleep(1000); // sleep to slowly watch
@@ -110,6 +112,16 @@ public class ElasticSearchConsumer {
 
         // close the client gracefully
 //        client.close();
+    }
+
+    private static JsonParser jsonParser = new JsonParser();
+
+    private static String extractIdFromTweet(String tweetJson) {
+        // Use Gson
+        return jsonParser.parse(tweetJson)
+                .getAsJsonObject()
+                .get("id_str")
+                .getAsString();
     }
 
 
