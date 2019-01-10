@@ -68,6 +68,8 @@ public class ElasticSearchConsumer {
         properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");  // disable auto commit of offsets
+        properties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "10");
 
         // 2. create consumer
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties);
@@ -86,6 +88,8 @@ public class ElasticSearchConsumer {
         // 4. poll for new data
         while (true) {  // purely for demo purpose
             ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+
+            logger.info("Received " + records.count() + " records");
             for (ConsumerRecord<String, String> record : records) {
                 // 2 strategies for generating ID...
                 // 1. use if you can't find a specific id
@@ -101,12 +105,19 @@ public class ElasticSearchConsumer {
 
                 IndexResponse indexResponse = client.index(indexRequest, RequestOptions.DEFAULT);
                 logger.info("Tweet id: " + indexResponse.getId());
-
                 try {
-                    Thread.sleep(1000); // sleep to slowly watch
+                    Thread.sleep(10); // sleep to slowly watch
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+            }
+            logger.info("Committing offsets...");
+            consumer.commitSync();
+            logger.info("Offsets have been committed");
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
 
