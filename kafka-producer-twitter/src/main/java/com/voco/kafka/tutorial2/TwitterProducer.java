@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 public class TwitterProducer {
     private Logger logger = LoggerFactory.getLogger(TwitterProducer.class);
     private Properties properties = new Properties();
-    private List<String> terms = Lists.newArrayList("bitcoin", "usa", "politics", "sport", "soccer");
+    private List<String> terms = Lists.newArrayList("trump");
 
     public TwitterProducer () throws IOException {
         String propFileName = "config.properties";
